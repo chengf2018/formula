@@ -96,6 +96,12 @@ private:
                 exit(-1);
             }
             next();
+        } else if (tk == '-') {
+            next();
+            left = -expr(Pow);
+        } else if (tk == '+') {
+            next();
+            left = expr(Pow);
         } else {
             std::cerr << "Bad expression" << std::endl;
             exit(-1);
@@ -151,7 +157,7 @@ private:
 };
 
 int main(int argc, char **argv) {
-    Formula formula = Formula("30*n - 2*(50+55) + a%3 + 2^3");
+    Formula formula = Formula("-9 + 30*n - 2*(50+55) + a%3 + 2^3 + -10");
     formula.add_variable("n", 20);
     formula.add_variable("a", 10);
     double result = formula.evaluate();
