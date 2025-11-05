@@ -3,6 +3,9 @@
 #include <unordered_map>
 #include <stack>
 #include <cmath>
+#include <vector>
+#include <algorithm>
+#include <numeric>
 
 enum {
     Id = 0,
@@ -33,6 +36,7 @@ private:
     int tk;
     int tk_level;
     double val;
+    std::string func_name;
 
     double parse_expression() {
         next();
@@ -58,13 +62,17 @@ private:
             std::string name = expression.substr(start, pos - start);
             if (variables.find(name) != variables.end()) {
                 val = variables[name];
-                tk = 'N'; // variable token
+                tk = 'D'; // variable token
+                tk_level = Id;
+            } else if (name == "max" || name == "min" || name == "avg" || name == "floor" || name == "ceil" || name == "round") {
+                tk = 'D'; // function token
+                func_name = name;
                 tk_level = Id;
             } else {
                 std::cerr << "Unknown variable: " << name << std::endl;
                 exit(-1);
             }
-        } else if (ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == '(' || ch == ')' || ch == '%' || ch == '^') {
+        } else if (ch == '+' || ch == '-' || ch == '*' || ch == '/' || ch == '(' || ch == ')' || ch == '%' || ch == '^' || ch == ',') {
             tk = ch; // operator token
             tk_level = ch == '+' || ch == '-' ? AddSub :
                        ch == '*' || ch == '/' ? MulDiv :
@@ -88,6 +96,61 @@ private:
         if (tk == 'N') {
             left = val;
             next();
+        } else if (tk == 'D') {
+            next();
+            if (tk == '(') {
+                std::string name = func_name;
+                std::vector<double> args;
+                next();
+                int arg_count = 0;
+                while (tk != ')') {
+                    args.push_back(expr(0));
+                    arg_count++;
+                    if (tk == ',') {
+                        next();
+                    } else if (tk != ')') {
+                        std::cerr << "Expected ',' or ')'" << std::endl;
+                        exit(-1);
+                    }
+                }
+
+                if (name == "max") {
+                    left = *std::max_element(args.begin(), args.end());
+                } else if (name == "min") {
+                    left = *std::min_element(args.begin(), args.end());
+                } else if (name == "avg") {
+                    if (args.empty()) {
+                        std::cerr << "avg() requires at least one argument" << std::endl;
+                        exit(-1);
+                    }
+                    double sum = std::accumulate(args.begin(), args.end(), 0.0);
+                    left = sum / args.size();
+                } else if (name == "floor") {
+                    if (args.empty()) {
+                        std::cerr << "floor() requires at least one argument" << std::endl;
+                        exit(-1);
+                    }
+                    left = std::floor(args[0]);
+                } else if (name == "ceil") {
+                    if (args.empty()) {
+                        std::cerr << "ceil() requires at least one argument" << std::endl;
+                        exit(-1);
+                    }
+                    left = std::ceil(args[0]);
+                } else if (name == "round") {
+                    if (args.empty()) {
+                        std::cerr << "round() requires at least one argument" << std::endl;
+                        exit(-1);
+                    }
+                    left = std::round(args[0]);
+                } else {
+                    std::cerr << "Unknown function: " << name << std::endl;
+                    exit(-1);
+                }
+                next();
+            } else {
+                left = val;
+            }
         } else if (tk == '(') {
             next();
             left = expr(0);
@@ -157,7 +220,7 @@ private:
 };
 
 int main(int argc, char **argv) {
-    Formula formula = Formula("-9 + 30*n - 2*(50+55) + a%3 + 2^3 + -10");
+    Formula formula = Formula("-9 + 30*n - 2*(50+55) + a%3 + 2^3 + -10 + max(3, n, 99, -7) + min(5, a, 2) + avg(10, 20, 30) + floor(3.7) + ceil(4.2) + round(5.5)");
     formula.add_variable("n", 20);
     formula.add_variable("a", 10);
     double result = formula.evaluate();
